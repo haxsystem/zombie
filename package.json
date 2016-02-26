@@ -1,0 +1,19 @@
+{
+  "name": "anthill-worker",
+  "version": "0.0.1",
+  "private": false,
+  "author": {
+    "name": "Bayro Monsalve Vera",
+    "email": "bayro.monsalve@gmail.com"
+  },
+  "engines": {
+    "node": ">=0.12.0"
+  },
+  "dependencies": {
+    "debug": "~2.1.3",
+    "stompit": "~0.22.0",
+    "caminte": "~0.2.7",
+    "redis": "~2.4.2",
+    "async": "~1.5.2"
+  }
+}
