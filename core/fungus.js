@@ -102,7 +102,8 @@ function _infected_brain() {
               }
 
               var zombie_body = require('../zombie/' + zombie.name + '/body_zombie');
-              zombie_body.set_config(config.environment);
+              zombie_body.set_config_global(config);
+              zombie_body.set_config_zombie(config.environment);
               zombie_body.head(body, function(err, message) {
                 async.series({
                   'before_die': function(callback) {
