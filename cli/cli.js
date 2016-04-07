@@ -8,6 +8,7 @@ var before_seppuku = "var debug = require('debug')('worker:before_zombie');\nmod
 var general_config = "var debug = require('debug')('worker:config_{name}');\n var fs = require('fs');\n var config_files = fs.readdirSync(__dirname);\n var inArray = require('in-array');\n var exclude = ['general.js', 'certificate', '.git'];\n \n module.exports = function(environment) {\n   var config = {};\n  for (var i in config_files) {\n     if (!inArray(exclude, config_files[i])) {\n       config[config_files[i].replace('\.js', '')] = require('./' + config_files[i])(environment);\n       debug(config_files[i]);\n     }\n   }\n   return config;\n };";
 var test_config = "var mq = {\n  local: {\n    host: 'localhost',\n    port: '61613',\n    connect_headers: {\n      host: '/',\n      login: 'guest',\n      password: 'guest',\n      heart_beat: '10,20'\n    },\n    queue_custom: null\n  },\n  development: {},\n  uat: {},\n  production: {}\n}\n\nmodule.exports = function(environment) {\n  var response = null;\n  switch (environment) {\n    case 'local':\n      response = mq['local'];\n      break;\n    case 'development':\n      response = mq['development'];\n      break;\n    case 'uat':\n      response = mq['uat'];\n      break;\n    case 'production':\n      response = mq['production'];\n      break;\n    default:\n      response = mq['production'];\n      break;\n  }\n  return response;\n}";
 var body_zombie = "var debug = require('debug')('worker:{name}');\nvar exports = module.exports = {};\nvar config = null;\nvar config_global = null;\n\nexports.set_config_global = function(config) {\n  config_global = config;\n}\n\nexports.set_config_zombie = function(environment) {\n  config = require('./config/general')(environment);\n}\n\nexports.head = function(message, callback) {\n  debug('zombie: ' + process.pid + ' message: ' + message);\n  debug(config);\n  callback(null, {\n    status: true,\n    seppuku: {\n      status: true\n    },\n    before_die: {\n      status: false\n    },\n    after_die: {\n      status: false\n    }\n  });\n}";
+
 program
   .version('0.0.1')
   .usage('<keywords>')
@@ -26,18 +27,18 @@ if (!program.args.length) {
  */
 function create_zombie_directory() {
   var folder = true;
-
+  var path = __dirname;
   try {
-    if (!fs.existsSync('../zombie')) {
-      fs.mkdirSync('../zombie');
+    if (!fs.existsSync(path + path + '/../zombie')) {
+      fs.mkdirSync(path + '/../zombie');
     }
 
-    fs.mkdirSync('../zombie/' + program.args[0]);
-    fs.mkdirSync('../zombie/' + program.args[0] + '/after');
-    fs.mkdirSync('../zombie/' + program.args[0] + '/after/seppuku');
-    fs.mkdirSync('../zombie/' + program.args[0] + '/before');
-    fs.mkdirSync('../zombie/' + program.args[0] + '/before/seppuku');
-    fs.mkdirSync('../zombie/' + program.args[0] + '/config');
+    fs.mkdirSync(path + '/../zombie/' + program.args[0]);
+    fs.mkdirSync(path + '/../zombie/' + program.args[0] + '/after');
+    fs.mkdirSync(path + '/../zombie/' + program.args[0] + '/after/seppuku');
+    fs.mkdirSync(path + '/../zombie/' + program.args[0] + '/before');
+    fs.mkdirSync(path + '/../zombie/' + program.args[0] + '/before/seppuku');
+    fs.mkdirSync(path + '/../zombie/' + program.args[0] + '/config');
   } catch (e) {
     if (e.code == 'EEXIST') {
       console.log('This zombie already exists');
@@ -49,11 +50,11 @@ function create_zombie_directory() {
 
   try {
     if (folder) {
-      fs.writeFileSync('../zombie/' + program.args[0] + '/after/seppuku/index.js', after_seppuku);
-      fs.writeFileSync('../zombie/' + program.args[0] + '/before/seppuku/index.js', before_seppuku);
-      fs.writeFileSync('../zombie/' + program.args[0] + '/config/general.js', general_config.replace('{name}', program.args[0]));
-      fs.writeFileSync('../zombie/' + program.args[0] + '/config/test.js', test_config);
-      fs.writeFileSync('../zombie/' + program.args[0] + '/body_zombie.js', body_zombie.replace('{name}', program.args[0]));
+      fs.writeFileSync(path + '/../zombie/' + program.args[0] + '/after/seppuku/index.js', after_seppuku);
+      fs.writeFileSync(path + '/../zombie/' + program.args[0] + '/before/seppuku/index.js', before_seppuku);
+      fs.writeFileSync(path + '/../zombie/' + program.args[0] + '/config/general.js', general_config.replace('{name}', program.args[0]));
+      fs.writeFileSync(path + '/../zombie/' + program.args[0] + '/config/test.js', test_config);
+      fs.writeFileSync(path + '/../zombie/' + program.args[0] + '/body_zombie.js', body_zombie.replace('{name}', program.args[0]));
     }
   } catch (e) {
     console.log(e.message);
