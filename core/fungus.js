@@ -58,9 +58,9 @@ function _create_zombie() {
   worker = cluster.fork();
   worker.on('message', function(message) {
     // This use switch for that in a future if is need add more case
-    switch (message.type) {
+    switch (message.action_type) {
       case 'seppuku':
-        worker.kill('SIGHUP');
+        process.kill(message.pid);
         break;
     }
   });
@@ -123,11 +123,13 @@ function _infected_brain() {
                   },
                   'seppuku': function(callback) {
                     var response = 'Not launch';
+                    var response_message = {};
 
                     if (message.seppuku.status) {
-                      process.send({
-                        type: 'seppuku'
-                      });
+                      response_message.action_type = 'seppuku';
+                      response_message.pid = process.pid;
+
+                      process.send(response_message);
                       response = 'ok';
                     }
                     callback(null, response);
