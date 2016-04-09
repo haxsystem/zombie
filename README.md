@@ -50,3 +50,7 @@ The zombie manager creates a queue with the following name zombie_land, here is 
 For each worker created an MQ queue begins with the structure of zombie name: name. And in this calo you can send the instructions depending on the behavior that you created.
 
 Each time a zombie processes a message coda at the end this is destroyed and automatically creates another zombie, in order to free the memory used by node.
+
+#### **LICENSE**
+GNU GENERAL PUBLIC LICENSE
+Version 3, 29 June 2007
