@@ -22,7 +22,6 @@ This type of worker is dedicated to performing work backgroud, such as:
  1. Node >= 0.12.0
  2. RabbitMQ >= 3.6.0
  3. npm >= 3.7.5
- 4. Redis >= 3.0.6
 
 #### clone the project
   
