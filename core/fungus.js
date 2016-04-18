@@ -60,7 +60,7 @@ function _create_zombie() {
     // This use switch for that in a future if is need add more case
     switch (message.action_type) {
       case 'seppuku':
-        process.kill(message.pid);
+        process.kill(message.pid, 'SIGHUP');
         break;
     }
   });
