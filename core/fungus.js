@@ -87,10 +87,15 @@ function _infected_brain() {
             'ack': 'client-individual'
           };
 
+          var consuming = false;
+
           client.subscribe(subscribeParams, function(error, message) {
-            if (message == undefined) {
-              return;
+            // Don't consume more than one message
+            if (consuming || message == undefined) {
+                return;
             }
+
+            consuming = true;
 
             message.ack();
 
