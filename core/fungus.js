@@ -43,12 +43,12 @@ cluster.on('exit', function(worker, code, signal) {
   _create_zombie();
 });
 
-process.on("uncaughtException", function (error) {
+process.on("uncaughtException", function(error) {
   if (error.toString() !== 'Error: IPC channel is already disconnected') {
     process.stderr.write(error.stack);
     process.exit(1);
   }
-}); 
+});
 
 /**
  * Function that create a zombie from to fork
@@ -61,6 +61,18 @@ function _create_zombie() {
     switch (message.action_type) {
       case 'seppuku':
         process.kill(message.pid, 'SIGHUP');
+
+        try {
+          if (message.after_die.status) {
+            require('../zombie/' + message.zombie.name + '/after/seppuku/index.js')(message.after_die.params, function(callback) {
+              debug(callback);
+            });
+          }
+        } catch (e) {
+          debug('Error after die for ' + message.zombie.name);
+          debug(e.message);
+          response = 'Error';
+        }
         break;
     }
   });
@@ -92,7 +104,7 @@ function _infected_brain() {
           client.subscribe(subscribeParams, function(error, message) {
             // Don't consume more than one message
             if (consuming || message == undefined) {
-                return;
+              return;
             }
 
             consuming = true;
@@ -107,8 +119,10 @@ function _infected_brain() {
               }
 
               var zombie_body = require('../zombie/' + zombie.name + '/body_zombie');
+
               zombie_body.set_config_global(config);
               zombie_body.set_config_zombie(config.environment);
+
               zombie_body.head(body, function(err, message) {
                 async.series({
                   'before_die': function(callback) {
@@ -116,8 +130,10 @@ function _infected_brain() {
 
                     if (message.before_die.status) {
                       try {
-                        require('../zombie/' + zombie.name + '/before/seppuku/index.js')();
-                        response = 'ok';
+                      require('../zombie/' + zombie.name + '/before/seppuku/index.js')(message.before_die.params, function(callback) {
+                          debug(callback);
+                          response = 'ok';
+                        });
                       } catch (e) {
                         debug('Error befor edie for ' + zombie.name);
                         debug(e.message);
@@ -128,36 +144,32 @@ function _infected_brain() {
                   },
                   'seppuku': function(callback) {
                     var response = 'Not launch';
-                    var response_message = {};
+                    var response_message = {
+                      after_die: {
+                        status: null,
+                        params: null
+                      },
+                      zombie: {
+                        name: null
+                      }
+                    };
 
                     if (message.seppuku.status) {
                       response_message.action_type = 'seppuku';
                       response_message.pid = process.pid;
 
+                      response_message.after_die.status = message.after_die.status;
+                      response_message.zombie.name = zombie.name;
+                      response_message.after_die.params = message.after_die.params;
+
                       process.send(response_message);
                       response = 'ok';
-                    }
-                    callback(null, response);
-                  },
-                  'after_die': function(callback) {
-                    var response = 'Not launch';
-
-                    try {
-                      if (message.after_die.status) {
-                        require('../zombie/' + zombie.name + '/after/seppuku/index.js')();
-                        response = 'ok';
-                      }
-                    } catch (e) {
-                      debug('Error after die for ' + zombie.name);
-                      debug(e.message);
-                      response = 'Error';
                     }
                     callback(null, response);
                   }
                 }, function(err, results) {
                   debug('_before_die: ' + results.before_die);
                   debug('_seppuku: ' + results.seppuku);
-                  debug('_after_die: ' + results.after_die);
                 });
               });
             });
