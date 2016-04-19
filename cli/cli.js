@@ -28,7 +28,7 @@ function create_zombie_directory() {
   var folder = true;
   var path = __dirname;
   try {
-    if (!fs.existsSync(path + path + '/../zombie')) {
+    if (!fs.existsSync(path + '/../zombie')) {
       fs.mkdirSync(path + '/../zombie');
     }
 
