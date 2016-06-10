@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 var program = require('commander');
-var async = require('async');
 var fs = require('fs');
 var after_seppuku = "var debug = require('debug')('worker:after_zombie');\n \n module.exports = function(params, callback) {\n   debug('After die');\n   debug(params);\n   callback(true);\n }";
 var before_seppuku = "var debug = require('debug')('worker:before_zombie');\n \n module.exports = function(params, callback) {\n   debug('Before die');\n   debug(params);\n   callback(true);\n }";
