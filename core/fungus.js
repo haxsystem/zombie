@@ -71,7 +71,6 @@ function _create_zombie() {
         } catch (e) {
           debug('Error after die for ' + message.zombie.name);
           debug(e.message);
-          response = 'Error';
         }
         break;
     }
