@@ -86,90 +86,86 @@ function _infected_brain() {
     // This use switch for that in a future if is need add more case 
     switch (message.type) {
       case 'infected':
-        stomp.connect(config.mq, function(error, client) {
+        var connectionManager = new stomp.ConnectFailover();
+        connectionManager.addServer(config.mq);
+        var channel = new stomp.Channel(connectionManager);
 
-          if (error) {
-            debug('Unable to connect: ' + error.message);
+        var subscribeParams = {
+          'destination': '/queue/zombie:' + zombie.name,
+          'ack': 'client-individual'
+        };
+
+        var consuming = false;
+
+        channel.subscribe(subscribeParams, function(error, message) {
+          // Don't consume more than one message
+          if (consuming || message == undefined) {
             return;
           }
 
-          var subscribeParams = {
-            'destination': '/queue/zombie:' + zombie.name,
-            'ack': 'client-individual'
-          };
+          consuming = true;
 
-          var consuming = false;
+          message.ack();
 
-          client.subscribe(subscribeParams, function(error, message) {
-            // Don't consume more than one message
-            if (consuming || message == undefined) {
+          message.readString('utf-8', function(error, body) {
+
+            if (error) {
+              debug('read message error ' + error.message);
               return;
             }
 
-            consuming = true;
+            var zombie_body = require('../zombie/' + zombie.name + '/body_zombie');
 
-            message.ack();
+            zombie_body.set_config_global(config);
+            zombie_body.set_config_zombie(config.environment);
 
-            message.readString('utf-8', function(error, body) {
+            zombie_body.head(body, function(err, message) {
+              async.series({
+                'before_die': function(callback) {
+                  var response = 'Not launch';
 
-              if (error) {
-                debug('read message error ' + error.message);
-                return;
-              }
-
-              var zombie_body = require('../zombie/' + zombie.name + '/body_zombie');
-
-              zombie_body.set_config_global(config);
-              zombie_body.set_config_zombie(config.environment);
-
-              zombie_body.head(body, function(err, message) {
-                async.series({
-                  'before_die': function(callback) {
-                    var response = 'Not launch';
-
-                    if (message.before_die.status) {
-                      try {
+                  if (message.before_die.status) {
+                    try {
                       require('../zombie/' + zombie.name + '/before/seppuku/index.js')(message.before_die.params, function(callback) {
-                          debug(callback);
-                          response = 'ok';
-                        });
-                      } catch (e) {
-                        debug('Error befor edie for ' + zombie.name);
-                        debug(e.message);
-                        response = 'Error';
-                      }
+                        debug(callback);
+                        response = 'ok';
+                      });
+                    } catch (e) {
+                      debug('Error befor edie for ' + zombie.name);
+                      debug(e.message);
+                      response = 'Error';
                     }
-                    callback(null, response);
-                  },
-                  'seppuku': function(callback) {
-                    var response = 'Not launch';
-                    var response_message = {
-                      after_die: {
-                        status: null,
-                        params: null
-                      },
-                      zombie: {
-                        name: null
-                      }
-                    };
-
-                    if (message.seppuku.status) {
-                      response_message.action_type = 'seppuku';
-                      response_message.pid = process.pid;
-
-                      response_message.after_die.status = message.after_die.status;
-                      response_message.zombie.name = zombie.name;
-                      response_message.after_die.params = message.after_die.params;
-
-                      process.send(response_message);
-                      response = 'ok';
-                    }
-                    callback(null, response);
                   }
-                }, function(err, results) {
-                  debug('_before_die: ' + results.before_die);
-                  debug('_seppuku: ' + results.seppuku);
-                });
+                  callback(null, response);
+                },
+                'seppuku': function(callback) {
+                  var response = 'Not launch';
+                  var response_message = {
+                    after_die: {
+                      status: null,
+                      params: null
+                    },
+                    zombie: {
+                      name: null
+                    }
+                  };
+
+                  if (message.seppuku.status) {
+                    response_message.action_type = 'seppuku';
+                    response_message.pid = process.pid;
+
+                    response_message.after_die.status = message.after_die.status;
+                    response_message.zombie.name = zombie.name;
+                    response_message.after_die.params = message.after_die.params;
+
+                    process.send(response_message);
+                    response = 'ok';
+                  }
+                  callback(null, response);
+                }
+              }, function(err, results) {
+                debug('_before_die: ' + results.before_die);
+                debug('_seppuku: ' + results.seppuku);
               });
             });
           });
