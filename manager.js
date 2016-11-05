@@ -7,72 +7,71 @@ var arg_fork = {
   stdio: 'pipe'
 };
 
+
+var connectionManager = new stomp.ConnectFailover();
+connectionManager.addServer(config.mq);
+var channel = new stomp.Channel(connectionManager);
+
 // Conexion with protocol stomp
-stomp.connect(config.mq, function(error, client) {
+
+var subscribe_params = {
+  'destination': config.mq.queue_manager,
+  'ack': 'client-individual'
+};
+
+debug('Conexion zombie manager with MQ');
+
+channel.subscribe(subscribe_params, function(error, message) {
   if (error) {
-    debug('Unable to connect: ' + error.message);
+    debug('read message error ' + error.message);
     return;
   }
+  // acknowledge for the message
+  message.ack();
 
-  var subscribe_params = {
-    'destination': config.mq.queue_manager,
-    'ack': 'client-individual'
-  };
+  message.readString('utf-8', function(error, body) {
+    try {
+      var instructions = JSON.parse(body);
 
-  debug('Conexion zombie manager with MQ');
+      if (instructions.status) {
+        switch (instructions.action) {
+          case 'launch':
+            if (!zombies.hasOwnProperty(instructions.zombie_name)) {
+              zombies[instructions.zombie_name] = fork('./core/fungus', [], arg_fork);
 
-  client.subscribe(subscribe_params, function(error, message) {
-    if (error) {
-      debug('read message error ' + error.message);
-      return;
-    }
-    // acknowledge for the message
-    message.ack();
+              debug('Launch zombie master: ' + instructions.zombie_name + ' and pid ' + zombies[instructions.zombie_name].pid);
 
-    message.readString('utf-8', function(error, body) {
-      try {
-        var instructions = JSON.parse(body);
+              zombies[instructions.zombie_name].send({
+                type: instructions.action,
+                zombie_name: instructions.zombie_name
+              });
 
-        if (instructions.status) {
-          switch (instructions.action) {
-            case 'launch':
-              if (!zombies.hasOwnProperty(instructions.zombie_name)) {
-                zombies[instructions.zombie_name] = fork('./core/fungus', [], arg_fork);
+              zombies[instructions.zombie_name].on('message', function(message) {
+                debug('received: ' + message);
+              });
 
-                debug('Launch zombie master: ' + instructions.zombie_name + ' and pid ' + zombies[instructions.zombie_name].pid);
-
-                zombies[instructions.zombie_name].send({
-                  type: instructions.action,
-                  zombie_name: instructions.zombie_name
-                });
-
-                zombies[instructions.zombie_name].on('message', function(message) {
-                  debug('received: ' + message);
-                });
-
-              } else {
-                debug('This zombie is ready and you can not create.');
-              }
-              break;
-            case 'disconnect':
-              if (zombies.hasOwnProperty(instructions.zombie_name)) {
-                debug('Disconnect Zombie Master: ' + instructions.zombie_name + ' and Pid ' + zombies[instructions.zombie_name].pid);
-                zombies[instructions.zombie_name].kill('SIGHUP');
-                delete zombies[instructions.zombie_name];
-              } else {
-                debug('This zombie does not exist.');
-              }
-              break;
-            default:
-              debug('unrecognized option');
-              debug(instructions);
-              break;
-          }
+            } else {
+              debug('This zombie is ready and you can not create.');
+            }
+            break;
+          case 'disconnect':
+            if (zombies.hasOwnProperty(instructions.zombie_name)) {
+              debug('Disconnect Zombie Master: ' + instructions.zombie_name + ' and Pid ' + zombies[instructions.zombie_name].pid);
+              zombies[instructions.zombie_name].kill('SIGHUP');
+              delete zombies[instructions.zombie_name];
+            } else {
+              debug('This zombie does not exist.');
+            }
+            break;
+          default:
+            debug('unrecognized option');
+            debug(instructions);
+            break;
         }
-      } catch (e) {
-        debug(e.message);
-        debug(e);
       }
-    });
+    } catch (e) {
+      debug(e.message);
+      debug(e);
+    }
   });
 });
