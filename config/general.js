@@ -4,7 +4,8 @@ var inArray = require('in-array');
 var config_files = fs.readdirSync(__dirname);
 var config = {
   environment: 'local',
-  cpu_factor: 2
+  cpu_factor: 2,
+  memory: 6096
 };
 
 var exclude = ['general.js', 'certificate', '.git'];
